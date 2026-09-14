@@ -453,8 +453,21 @@ class DocValidator:
             if md_file.name in ["README.md", "index.md"]:
                 continue
 
+            # Only top-level files in the document folder are treated as
+            # numbered documents subject to strict naming/frontmatter/ID rules.
+            # Everything nested in a subfolder (e.g. prd/testing/*, memos/
+            # private/*) is supporting material and is skipped entirely -
+            # regardless of whether its name happens to match the pattern -
+            # so it is never validated (or mis-validated) as a top-level doc.
+            is_top_level = md_file.parent == folder_path
+            if enforce_filename_pattern and not is_top_level:
+                self.log(f"   ⊘ {md_file.relative_to(folder_path)}: nested support file, skipping")
+                continue
+
             match = pattern.match(md_file.name)
             if enforce_filename_pattern and not match:
+                # A top-level file that violates the naming convention is a
+                # real error the author must fix.
                 self.errors.append(f"Invalid {doc_type.upper()} filename: {md_file.name} (pattern: {pattern.pattern})")
                 self.log(f"   ✗ {md_file.name}: Invalid filename format")
                 continue
@@ -468,6 +481,16 @@ class DocValidator:
                     continue
                 if isinstance(prefix, str) and isinstance(num, str) and prefix.lower() == doc_type and num.isdigit():
                     expected_id = f"{doc_type}-{num}"
+                    # Amendment files (e.g. 'adr-043-amendment-01-...md') use the
+                    # amendment id form 'adr-043-a1'. This '-aNN' convention is
+                    # ADR-only, so the conversion is restricted to ADRs to avoid
+                    # inventing false expected ids for other doc types.
+                    if doc_type == "adr":
+                        rest = match.groups()[2] if len(match.groups()) >= 3 else ""
+                        if isinstance(rest, str):
+                            amendment_match = re.match(r"amendment-0*(\d+)\b", rest)
+                            if amendment_match:
+                                expected_id = f"{doc_type}-{num}-a{amendment_match.group(1)}"
 
             doc = self._parse_document(
                 md_file, doc_type, require_frontmatter=require_frontmatter, expected_id=expected_id
@@ -733,6 +756,12 @@ class DocValidator:
             return LinkType.INTERNAL_RFC
         if target.endswith(".md") or target.startswith(("./", "../")):
             return LinkType.INTERNAL_DOC
+        # Any remaining non-anchor, non-URL, non-absolute target is a bare
+        # relative reference (e.g. 'other-doc', 'guide/'). Treat it as an
+        # internal doc link so it is resolved against the source directory
+        # instead of being reported as an unknown link type.
+        if not target.startswith(("http://", "https://", "/", "#", "mailto:", "data:", "tel:")):
+            return LinkType.INTERNAL_DOC
         return LinkType.UNKNOWN
 
     def validate_links(self):
@@ -759,36 +788,59 @@ class DocValidator:
                 link.is_valid = False
                 link.error_message = f"Unknown link type: {link.target}"
 
+    @staticmethod
+    def _resolve_link_target(base_dir: Path, target: str) -> tuple[Path, bool]:
+        """Resolve a link target against base_dir and report existence.
+
+        Handles three cases without producing false negatives:
+        - An existing file (with or without suffix).
+        - An existing directory (e.g. a link to '../adr/'), which markdown and
+          Docusaurus treat as a valid folder link and must NOT get '.md'
+          appended.
+        - A suffix-less document reference (e.g. './other-doc'), for which we
+          try the '.md' extension.
+        """
+        resolved = (base_dir / target).resolve()
+
+        # Directory or exact file already exists -> valid as-is.
+        if resolved.exists():
+            return resolved, True
+
+        # Suffix-less reference to a markdown doc: try appending '.md'.
+        if not resolved.suffix:
+            with_md = Path(str(resolved) + ".md")
+            if with_md.exists():
+                return with_md, True
+            return with_md, False
+
+        return resolved, False
+
     def _validate_internal_link(self, link: Link):
         """Validate internal document link"""
         target = self._link_path_target(link.target)
 
         # Handle relative paths
         if target.startswith(("./", "../")):
-            source_dir = link.source_doc.parent
-            target_path = (source_dir / target).resolve()
-
-            if not target_path.suffix:
-                target_path = Path(str(target_path) + ".md")
-
-            if target_path.exists():
-                link.is_valid = True
-            else:
-                link.is_valid = False
+            target_path, exists = self._resolve_link_target(link.source_doc.parent, target)
+            link.is_valid = exists
+            if not exists:
                 link.error_message = f"File not found: {target_path}"
 
         # Handle absolute paths
         elif target.startswith("/"):
-            target_path = self.repo_root / target.lstrip("/")
-            if target_path.exists():
-                link.is_valid = True
-            else:
-                link.is_valid = False
+            target_path, exists = self._resolve_link_target(self.repo_root, target.lstrip("/"))
+            link.is_valid = exists
+            if not exists:
                 link.error_message = f"File not found: {target_path}"
 
+        # Handle bare relative paths (no leading ./, ../ or /), e.g.
+        # 'adr/adr-012-...md' or 'other-doc.md'. These are valid relative links
+        # that markdown/Docusaurus resolve against the source document's dir.
         else:
-            link.is_valid = False
-            link.error_message = f"Ambiguous link format: {target}"
+            target_path, exists = self._resolve_link_target(link.source_doc.parent, target)
+            link.is_valid = exists
+            if not exists:
+                link.error_message = f"File not found: {target_path}"
 
     def check_mdx_compilation(self):
         """Check MDX compilation using @mdx-js/mdx compiler"""
@@ -871,45 +923,297 @@ class DocValidator:
             self.log(f"   ✗ {error}")
             return False
 
+    # Known HTML elements that are valid raw markup in MDX and must not be
+    # flagged (e.g. '<a href=...>', '<br/>', '<sup>', '<div>').
+    _KNOWN_HTML_TAGS = frozenset(
+        {
+            # Content / text
+            "a",
+            "abbr",
+            "address",
+            "article",
+            "aside",
+            "b",
+            "bdi",
+            "bdo",
+            "blockquote",
+            "br",
+            "button",
+            "canvas",
+            "caption",
+            "cite",
+            "code",
+            "col",
+            "colgroup",
+            "data",
+            "datalist",
+            "dd",
+            "del",
+            "details",
+            "dfn",
+            "dialog",
+            "div",
+            "dl",
+            "dt",
+            "em",
+            "embed",
+            "fieldset",
+            "figcaption",
+            "figure",
+            "footer",
+            "form",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "head",
+            "header",
+            "hgroup",
+            "hr",
+            "i",
+            "iframe",
+            "img",
+            "input",
+            "ins",
+            "kbd",
+            "label",
+            "legend",
+            "li",
+            "link",
+            "main",
+            "map",
+            "mark",
+            "menu",
+            "meta",
+            "meter",
+            "nav",
+            "noscript",
+            "object",
+            "ol",
+            "optgroup",
+            "option",
+            "output",
+            "p",
+            "param",
+            "picture",
+            "pre",
+            "progress",
+            "q",
+            "rp",
+            "rt",
+            "ruby",
+            "s",
+            "samp",
+            "script",
+            "section",
+            "select",
+            "slot",
+            "small",
+            "source",
+            "span",
+            "strong",
+            "style",
+            "sub",
+            "summary",
+            "sup",
+            "table",
+            "tbody",
+            "td",
+            "template",
+            "textarea",
+            "tfoot",
+            "th",
+            "thead",
+            "time",
+            "title",
+            "tr",
+            "track",
+            "u",
+            "ul",
+            "var",
+            "video",
+            "wbr",
+            # Media / SVG / MathML (commonly embedded raw)
+            "audio",
+            "svg",
+            "path",
+            "g",
+            "circle",
+            "rect",
+            "line",
+            "polyline",
+            "polygon",
+            "ellipse",
+            "text",
+            "defs",
+            "use",
+            "symbol",
+            "math",
+        }
+    )
+
+    def _is_safe_mdx_tag(self, tag_text: str) -> bool:
+        """Return True if a '<...>' occurrence is safe/valid in MDX.
+
+        Safe cases:
+        - Known HTML elements (<a>, <br/>, <sup>, ...), open or close.
+        - JSX components: PascalCase names or self-closing tags with a proper
+          structure (e.g. <Outlet />, <SuspenseWrapper>).
+
+        Risky (returns False): bare placeholders in prose that are not valid
+        elements, e.g. <agentName>, <token>, <your-secret>, <log-name>.
+        """
+        m = re.match(r"</?([A-Za-z][A-Za-z0-9_]*)", tag_text)
+        if not m:
+            return False
+        name = m.group(1)
+
+        # Known HTML element (case-insensitive) -> always safe.
+        if name.lower() in self._KNOWN_HTML_TAGS:
+            return True
+
+        # JSX component convention: starts with an uppercase letter.
+        if name[0].isupper():
+            return True
+
+        # Self-closing tag with valid structure, with or without attributes,
+        # e.g. '<thing />' or '<widget role="img" />'. Any explicitly
+        # self-closed tag is safe MDX regardless of the element name.
+        return bool(re.match(r"<[A-Za-z][A-Za-z0-9_]*(\s[^<>]*)?/>", tag_text))
+
+    @staticmethod
+    def _mask_code(content: str, strip_frontmatter: bool = False) -> list[str]:
+        """Return the document's lines with code masked out, line numbers kept.
+
+        Masks fenced code blocks (``` / ~~~) and inline code spans (backticks),
+        including inline spans that wrap across multiple lines. Masked regions
+        are replaced with spaces so column/line positions are preserved but the
+        content is not matched by prose checks (MDX tags, links, etc.).
+
+        Fenced blocks track the opening delimiter's character and length: a
+        block is only closed by a fence of the same character that is at least
+        as long. This means an outer ```` ```` block may contain an inner
+        ``` example without prematurely closing.
+
+        When ``strip_frontmatter`` is True, a leading YAML frontmatter block
+        (delimited by '---') is masked as well, since frontmatter is not
+        compiled as MDX and its values must not be treated as prose.
+        """
+        lines = content.split("\n")
+        out: list[str] = []
+
+        # Optionally mask a leading YAML frontmatter block.
+        start = 0
+        if strip_frontmatter and lines and lines[0].strip() == "---":
+            out.append("")
+            i = 1
+            while i < len(lines) and lines[i].strip() != "---":
+                out.append("")
+                i += 1
+            if i < len(lines):  # closing '---'
+                out.append("")
+                i += 1
+            start = i
+
+        fence_re = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
+        fence_char: str | None = None
+        fence_len = 0
+        for line in lines[start:]:
+            m = fence_re.match(line)
+            if m:
+                marker = m.group(2)
+                rest = m.group(3)
+                char = marker[0]
+                length = len(marker)
+                if fence_char is None:
+                    # Opening fence. May carry an info string (e.g. ```go).
+                    # Backtick fences may not contain a backtick in the info
+                    # string; if they do, this is not a valid opening fence.
+                    if char == "`" and "`" in rest:
+                        out.append(line)
+                        continue
+                    fence_char = char
+                    fence_len = length
+                    out.append("")
+                    continue
+                # A closing fence must use the same character, be at least as
+                # long, and (per CommonMark) carry no info string - only
+                # trailing whitespace is allowed.
+                if char == fence_char and length >= fence_len and rest.strip() == "":
+                    fence_char = None
+                    fence_len = 0
+                    out.append("")
+                    continue
+                # Anything else inside a block (a shorter/other fence, or a
+                # fence with an info string like ```go) is just content.
+                out.append("")
+                continue
+            if fence_char is not None:
+                out.append("")
+            else:
+                out.append(line)
+
+        # Now mask inline code spans across the (non-fenced) joined text so that
+        # spans spanning multiple lines are handled. We rebuild line by line.
+        joined = "\n".join(out)
+
+        def _blank(match: re.Match[str]) -> str:
+            # Preserve newlines so line numbering is unaffected.
+            return "".join("\n" if ch == "\n" else " " for ch in match.group(0))
+
+        # Backtick spans: two-backtick then single-backtick delimiters, matched
+        # non-greedily, allowing newlines (multi-line inline spans).
+        joined = re.sub(r"``.+?``", _blank, joined, flags=re.DOTALL)
+        joined = re.sub(r"`[^`]+?`", _blank, joined, flags=re.DOTALL)
+
+        return joined.split("\n")
+
     def check_mdx_compatibility(self):
         """Check for MDX parsing issues (unescaped special characters)"""
         self.log("\n🔧 Checking MDX compatibility...")
 
-        # MDX doesn't like unescaped < and > in markdown
-        problematic_patterns = [
-            (r"^\s*[-*]\s+.*<\d+", "Unescaped < before number (use &lt; or backticks)"),
-            (r":\s+<\d+", "Unescaped < after colon (use &lt; or backticks)"),
-            (r"^\s*[-*]\s+.*>\d+", "Unescaped > before number (use &gt; or backticks)"),
-        ]
+        # MDX only mis-parses '<' when it looks like the start of a JSX tag,
+        # i.e. '<' immediately followed by a letter. A '<'/'>' before a digit or
+        # whitespace ('<5ms', '>90%', 'a < b') is NOT interpreted as JSX and is
+        # safe. Valid HTML elements and JSX components are also safe. Only bare
+        # placeholders in prose (e.g. '<agentName>', '<token>') actually break
+        # MDX and should be flagged.
+        #
+        # A '<' only starts a tag when a letter (or '/') follows IMMEDIATELY,
+        # with no whitespace. '< threshold' or 'a < b' are comparisons and are
+        # safe; only '<word...' is a tag candidate. The tag name may be a single
+        # character ('<x>') and may contain underscores ('<api_key>'), matching
+        # JSX identifier-shaped names. The candidate is bounded by the matching
+        # '>' so we inspect the whole tag when deciding safety.
+        tag_candidate_pattern = re.compile(r"</?[A-Za-z][A-Za-z0-9._-]*[^<>]*/?>")
 
         mdx_issues_found = False
 
         for doc in self.documents:
             try:
-                content = doc.get_content()
-                lines = content.split("\n")
+                # Code fences and inline code (including multi-line inline
+                # spans) are masked out so we only inspect prose. Frontmatter is
+                # masked too because it is not compiled as MDX.
+                masked_lines = self._mask_code(doc.get_content(), strip_frontmatter=True)
 
-                in_code_fence = False
-                code_fence_pattern = re.compile(r"^```")
-
-                for line_num, line in enumerate(lines, start=1):
-                    # Toggle code fence
-                    if code_fence_pattern.match(line):
-                        in_code_fence = not in_code_fence
-                        continue
-
-                    if in_code_fence:
-                        continue
-
-                    # Remove inline code
-                    line_without_code = re.sub(r"`[^`]+`", "", line)
-
-                    for pattern, issue_desc in problematic_patterns:
-                        if re.search(pattern, line_without_code):
-                            error = f"Line {line_num}: {issue_desc}"
-                            doc.errors.append(error)
-                            mdx_issues_found = True
-                            self.log(f"   ✗ {doc.file_path.name}:{line_num} - {issue_desc}")
+                for line_num, line in enumerate(masked_lines, start=1):
+                    for match in tag_candidate_pattern.finditer(line):
+                        tag_text = match.group(0)
+                        if self._is_safe_mdx_tag(tag_text):
+                            continue
+                        name_match = re.match(r"</?([A-Za-z][A-Za-z0-9._-]*)", tag_text)
+                        placeholder = name_match.group(1) if name_match else tag_text
+                        issue_desc = (
+                            f"Unescaped '<{placeholder}>' looks like a JSX tag but is not a "
+                            f"valid HTML/JSX element. Wrap it in backticks (`<{placeholder}>`) "
+                            f"or escape the angle brackets as &lt;{placeholder}&gt;"
+                        )
+                        error = f"Line {line_num}: {issue_desc}"
+                        doc.errors.append(error)
+                        mdx_issues_found = True
+                        self.log(f"   ✗ {doc.file_path.name}:{line_num} - {issue_desc}")
 
             except Exception as e:
                 doc.errors.append(f"Error checking MDX compatibility: {e}")
@@ -918,28 +1222,72 @@ class DocValidator:
             self.log("   ✓ No MDX syntax issues found")
 
     def check_cross_plugin_links(self):
-        """Check for problematic cross-plugin links"""
-        self.log("\n🔗 Checking cross-plugin links...")
+        """Check for relative links that escape the repository root.
 
-        cross_plugin_pattern = re.compile(r"\[([^\]]+)\]\((\.\.\/){2,}[^)]+\)")
+        A relative link that resolves to a path outside the repository cannot be
+        satisfied by any in-repo reference and will not resolve at build time.
+        Links that point elsewhere inside the repository (e.g. into the source
+        tree at '../../internal/...' or the repo-root README) are legitimate and
+        are NOT flagged.
+
+        Each offending link is reported individually with its line number and
+        the resolved target.
+        """
+        self.log("\n🔗 Checking links escaping the repository...")
+
+        repo_root = self.repo_root.resolve()
+        # Match links against the whole (masked) content so that Markdown links
+        # whose label and target span multiple lines are still detected.
+        link_pattern = re.compile(r"\[[^\]]*\]\(([^)]+)\)", re.DOTALL)
         issues_found = False
 
         for doc in self.documents:
             try:
-                content = doc.get_content()
-                matches = list(cross_plugin_pattern.finditer(content))
+                masked = "\n".join(self._mask_code(doc.get_content(), strip_frontmatter=True))
 
-                if matches:
+                for match in link_pattern.finditer(masked):
+                    target = match.group(1).strip()
+                    # Line number of the target (where the '(' opens).
+                    line_num = masked.count("\n", 0, match.start(1)) + 1
+
+                    # Skip external URLs, anchors, and non-file schemes.
+                    if target.startswith(("http://", "https://", "#", "mailto:", "data:", "tel:")):
+                        continue
+
+                    # Strip anchors/query and ignore anchor-only targets.
+                    path_part = target.split("#", 1)[0].split("?", 1)[0].strip()
+                    if not path_part:
+                        continue
+
+                    # Absolute (site-root) links are resolved against repo root;
+                    # all other targets are relative to the source document. In
+                    # both cases we resolve fully so that parent traversals that
+                    # appear later in the path (e.g. 'a/../../../out') are caught.
+                    if path_part.startswith("/"):
+                        resolved = (repo_root / path_part.lstrip("/")).resolve()
+                    else:
+                        resolved = (doc.file_path.parent / path_part).resolve()
+
+                    # Flag only if the resolved target is outside the repo.
+                    try:
+                        resolved.relative_to(repo_root)
+                        continue  # inside repo -> fine
+                    except ValueError:
+                        pass
+
                     issues_found = True
-                    error = f"Found {len(matches)} cross-plugin link(s) - use absolute GitHub URLs instead"
+                    error = (
+                        f"Line {line_num}: Link '{target}' points outside the repository "
+                        f"({repo_root.name}/) - use an absolute GitHub URL for external references"
+                    )
                     doc.errors.append(error)
-                    self.log(f"   ⚠️  {doc.file_path.name}: {error}")
+                    self.log(f"   ⚠️  {doc.file_path.name}:{line_num} - {error}")
 
             except Exception as e:
                 doc.errors.append(f"Error checking cross-plugin links: {e}")
 
         if not issues_found:
-            self.log("   ✓ No problematic cross-plugin links found")
+            self.log("   ✓ No links escaping the repository found")
 
     def _extract_markdown_file_links(self, content: str, source_path: Path) -> dict[Path, tuple[int, str]]:
         """Extract Markdown file links and resolve them to absolute paths."""

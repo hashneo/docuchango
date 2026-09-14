@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.1.1 (2026-09-14)
+
+### Bug Fixes
+
+- **validator**: Eliminate validation false positives
+  ([`980a96b`](https://github.com/hashneo/docuchango/commit/980a96b2bb7691e7fac7829ac1e2cb46c3d17909))
+
+
 ## v1.18.1 (2026-05-27)
 
 ### Chores

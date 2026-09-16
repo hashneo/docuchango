@@ -2,6 +2,258 @@
 
 <!-- version list -->
 
+## v1.1.0-rc.1 (2026-09-16)
+
+### Bug Fixes
+
+- Preserve static asset link extensions
+  ([`362c7ec`](https://github.com/hashneo/docuchango/commit/362c7ec4c543731ea913d8ee35d97e598bb8298e))
+
+- **cli**: Resolve --path/--repo-root before comparing to discovered paths
+  ([`c1a502a`](https://github.com/hashneo/docuchango/commit/c1a502a299f29582c4179ed9aa5cd8abc2e6eb85))
+
+- **cli**: Resolve --repo-root before validating and label dry-run fixes as fixable
+  ([`57f691c`](https://github.com/hashneo/docuchango/commit/57f691c7e5f36d2e3f8f9cdf17fac5b30761a096))
+
+- **config**: Resolve legacy document folders under docs_roots
+  ([`ab461ed`](https://github.com/hashneo/docuchango/commit/ab461ed6ebd3f89d399838ab95d7c02445620bae))
+
+- **fixes**: Derive frontmatter doc type from configured schema
+  ([#83](https://github.com/hashneo/docuchango/pull/83),
+  [`6f70b3a`](https://github.com/hashneo/docuchango/commit/6f70b3aa5c193f5cc26ddb5911161d17095cd37e))
+
+- **fixes**: Recognize and strip UTF-8 BOM before frontmatter (FMT-012, #80)
+  ([`592732d`](https://github.com/hashneo/docuchango/commit/592732d1d25f71df4fb9359c27f0758e71b03551))
+
+- **fixes**: Replace whole block scalar when updating frontmatter fields
+  ([#81](https://github.com/hashneo/docuchango/pull/81),
+  [`769348a`](https://github.com/hashneo/docuchango/commit/769348a13fe5abec06140da995c0813eb923a454))
+
+- **release**: Refresh uv.lock in the release commit
+  ([`8178402`](https://github.com/hashneo/docuchango/commit/817840244b438174b9e2fec2bc2af28996d25bdc))
+
+- **schemas**: Allow 'Rejected' status for ADRs and RFCs
+  ([`1b05d4c`](https://github.com/hashneo/docuchango/commit/1b05d4c12c693aaa4a570863b21a46216278ac87))
+
+- **status**: Make Rejected consistent between validation and auto-fix
+  ([`c411fdb`](https://github.com/hashneo/docuchango/commit/c411fdb342d9370f3ce5cba587d244d06a8207b8))
+
+- **validate**: Exit nonzero when no documents are scanned
+  ([#87](https://github.com/hashneo/docuchango/pull/87),
+  [`2434dbe`](https://github.com/hashneo/docuchango/commit/2434dbebbc7ba4ed63036b9fdbe50ba77eec5ee2))
+
+- **validate**: Honor sub-project readability configuration
+  ([#82](https://github.com/hashneo/docuchango/pull/82),
+  [`46e9809`](https://github.com/hashneo/docuchango/commit/46e98094489b00e119e33b4efd3f9ebbfca184e6))
+
+- **validator**: Address PR review feedback
+  ([`c74fe8d`](https://github.com/hashneo/docuchango/commit/c74fe8d90343dd6d10c3060c728f3b5de01ffd8e))
+
+- **validator**: Address second review round
+  ([`fb6d442`](https://github.com/hashneo/docuchango/commit/fb6d442a991f0128143a53cfc08c41e97bbaff4e))
+
+- **validator**: Correct false positives found in maintainer review
+  ([`55068c6`](https://github.com/hashneo/docuchango/commit/55068c6fbbd45f4ef0550dc59b94c08d392a274b))
+
+- **validator**: Eliminate validation false positives
+  ([`108f554`](https://github.com/hashneo/docuchango/commit/108f554b224ae13042b8a72fe155857859dafd79))
+
+### Chores
+
+- Align template docs and formatting
+  ([`b4034ee`](https://github.com/hashneo/docuchango/commit/b4034ee31dec081e683e6678aca1495e473a9a5c))
+
+- **deps**: Bump nltk in the uv group across 1 directory
+  ([`4fd374f`](https://github.com/hashneo/docuchango/commit/4fd374f690d4d26affa7369506b52d170897685f))
+
+- **deps**: Bump nltk to 3.10.3 and add a dev dependency group
+  ([`c40b834`](https://github.com/hashneo/docuchango/commit/c40b834302d886efe58ac7d376a0ecd244a5bf61))
+
+- **deps**: Bump setuptools in the uv group across 1 directory
+  ([`0a14006`](https://github.com/hashneo/docuchango/commit/0a14006ec65c267caf2ea7eb121b976924c5f132))
+
+### Code Style
+
+- Fix ruff format/lint and mypy for validator changes
+  ([`e7fa018`](https://github.com/hashneo/docuchango/commit/e7fa0180f0bfdbd03fbb95b345702b584f7285e4))
+
+### Continuous Integration
+
+- Add Python 3.15 support
+  ([`4fe7fe7`](https://github.com/hashneo/docuchango/commit/4fe7fe7170ee13e21cd306e91169201cdb32e992))
+
+- Add rc release channel and restore release assets
+  ([`d74a07e`](https://github.com/hashneo/docuchango/commit/d74a07e4044976864a3ed003eaaaf841af51d1c1))
+
+- Make main the rc channel and promote to stable by dispatch
+  ([`56ea487`](https://github.com/hashneo/docuchango/commit/56ea4870c6dbba8a1ea8f14ec0666f07ae295ed1))
+
+### Documentation
+
+- Add docuchango docs-cms content
+  ([`fe07fff`](https://github.com/hashneo/docuchango/commit/fe07ffffd9a8cc2a657c31027f250d8b0eea875e))
+
+- Add validator roadmap with finding IDs
+  ([`9d0a371`](https://github.com/hashneo/docuchango/commit/9d0a3715a23c67192af78f8fff1cf5c1d2d2d0b2))
+
+- Align agent guide frontmatter examples with the schemas
+  ([`54bfb45`](https://github.com/hashneo/docuchango/commit/54bfb451a51171301044c09533e240e19fb990f4))
+
+- Align every ADR/RFC status enumeration with the schema
+  ([`f9edb00`](https://github.com/hashneo/docuchango/commit/f9edb00ec2c6b4cbaa9821da761f5e2d13537433))
+
+- Correct claims flagged in PR review
+  ([`c545334`](https://github.com/hashneo/docuchango/commit/c545334c5ac52103408bab8447e72f3148440dda))
+
+- Correct dry-run and CI claims in the bootstrap guide
+  ([`4fa1bfd`](https://github.com/hashneo/docuchango/commit/4fa1bfd596f6a66ef6c1a4ffe96c17997972c38c))
+
+- Correct scanning, schema, and index claims in configuration guide
+  ([`cba6128`](https://github.com/hashneo/docuchango/commit/cba612811f4131c84913dc521dd722a1e98721c2))
+
+- Describe atomic fixing behaviour
+  ([`c99e73a`](https://github.com/hashneo/docuchango/commit/c99e73a0032d9b11127ec9a75d2f7d26c4c8df8c))
+
+- Document structure.scan_subfolders
+  ([`8053642`](https://github.com/hashneo/docuchango/commit/8053642a891d3a9a6f592290608a3b013989c22c))
+
+- Fix README claims about fixes, CI, and Python support
+  ([`c3e7bad`](https://github.com/hashneo/docuchango/commit/c3e7badfd3b6b159ada1442e8d26aec9c177e9e3))
+
+- Format heading test
+  ([`baaa53a`](https://github.com/hashneo/docuchango/commit/baaa53ac7e5c5c8adc0bae6db9c05bed88ab800e))
+
+- Name every status enumeration in the FM-002 registry row
+  ([`9e6acf8`](https://github.com/hashneo/docuchango/commit/9e6acf8c951b86a6e08ad0ec778715e70f99aecc))
+
+- Narrow validation reference to match actual fix and check behavior
+  ([`a2b1411`](https://github.com/hashneo/docuchango/commit/a2b1411f4a15cad928bcd15abcc373d628503a13))
+
+- Point the rfc-003 validator checklist at the regression fixtures
+  ([`e7e6da7`](https://github.com/hashneo/docuchango/commit/e7e6da707000cdfa06553526e9ac43f57e362f92))
+
+- Refresh onboarding and simplify the introduction
+  ([`ea055bf`](https://github.com/hashneo/docuchango/commit/ea055bf41fe3dd910ac2e82544847be327a16408))
+
+- Update README logo image
+  ([`c0c2e4c`](https://github.com/hashneo/docuchango/commit/c0c2e4c51ec82962da3c290a9ae15a4bef0b993a))
+
+- Update stale invalid-status example in prd-001
+  ([`a93e5e6`](https://github.com/hashneo/docuchango/commit/a93e5e620fd5148708f19748dcf10826864e60ef))
+
+- Update the validation reference for the reworked checks
+  ([`7430624`](https://github.com/hashneo/docuchango/commit/74306242c68d4fb42736120942732f548b3b5be4))
+
+- Update the validator registry for the reworked link and MDX checks
+  ([`9b2ca2f`](https://github.com/hashneo/docuchango/commit/9b2ca2f0f9bdd163701d2fff22d86a29ae68dd5d))
+
+### Features
+
+- Contain docs project config paths
+  ([`1d59938`](https://github.com/hashneo/docuchango/commit/1d5993865a9c09a36ad6db05124512e58f1a9e5e))
+
+- Publish indexed static asset site
+  ([`e9d32b0`](https://github.com/hashneo/docuchango/commit/e9d32b0f4d07485f33bab9c1bc4ea3c775845be3))
+
+- **config**: Add structure.scan_subfolders to opt into scanning nested docs
+  ([`615e0b6`](https://github.com/hashneo/docuchango/commit/615e0b62267aa1fd48e9730ec96a9d7ae7256dcc))
+
+- **validate**: Implement FM-010 project_id match check and placeholder fix
+  ([`cc703d8`](https://github.com/hashneo/docuchango/commit/cc703d8f298520297466fe66dd4ca693a0ee8fec))
+
+- **validate**: Implement FM-011 date format check
+  ([`c943806`](https://github.com/hashneo/docuchango/commit/c9438065603d05715cbc126f0cf05c2a5e206b8c))
+
+- **validate**: Implement FMT-010 line ending detection and fix
+  ([`84dc931`](https://github.com/hashneo/docuchango/commit/84dc9319ac315d022f70f78b05ef7340caa23681))
+
+- **validate**: Implement FMT-011 blank-line collapse fix
+  ([`fbd143c`](https://github.com/hashneo/docuchango/commit/fbd143c8340801c1da5034c6f3c79005f7aadddf))
+
+- **validate**: Implement ID-010 opt-in numbering gap report
+  ([`b8bd189`](https://github.com/hashneo/docuchango/commit/b8bd189a33565c2ac8db669ef096b8ad14d628d0))
+
+- **validate**: Implement LNK-010 internal link rewrite
+  ([`c0c148c`](https://github.com/hashneo/docuchango/commit/c0c148ce0adb33dd71c0cc3e5edd9aa3010541fa))
+
+- **validate**: Implement LNK-011 cross-plugin link rewrite via project.repository_url
+  ([`e2a9918`](https://github.com/hashneo/docuchango/commit/e2a991826be38ada621b750ba0f286bdf86e2e9f))
+
+- **validate**: Implement MDX-010 by wiring the MDX escape fixer into Phase 1
+  ([`5f3b2c8`](https://github.com/hashneo/docuchango/commit/5f3b2c8b905c88479518753be33d29a19346ef7e))
+
+- **validate**: Make fixing atomic by default
+  ([`73c218d`](https://github.com/hashneo/docuchango/commit/73c218d6f0374625f045df240800fbb1e1628fa6))
+
+### Testing
+
+- Add fixture-driven finding regression harness
+  ([`2e52c29`](https://github.com/hashneo/docuchango/commit/2e52c29eba1a7945b8698b342f9eb05f7564ddeb))
+
+- Add shared docs_tree config builder, use it in test_document_indexes
+  ([`9d606be`](https://github.com/hashneo/docuchango/commit/9d606be54395f6d7c74a8a6b3b0c95f836af2c0b))
+
+- Add xfail fixtures for the planned FM-010 and FMT-010 checks
+  ([`f017399`](https://github.com/hashneo/docuchango/commit/f0173996197c246dc6ed8a982e61205c081334a1))
+
+- Cover CONFIGURATION.md and VALIDATION_REFERENCE.md for stale CLI references
+  ([`2be933d`](https://github.com/hashneo/docuchango/commit/2be933d4ccaf68cacc5e08621db20f7055055195))
+
+- Cover local link target edge cases
+  ([`918abf2`](https://github.com/hashneo/docuchango/commit/918abf2d4794ffbcb8ea46b8971d67935faee0e2))
+
+- Cover quality pass edge cases
+  ([`b140b4a`](https://github.com/hashneo/docuchango/commit/b140b4aa4e431d7af2ba1e1df3b1de6f0228255e))
+
+- Cover relative and symlinked --path/--repo-root for CLI commands
+  ([`1e80ea6`](https://github.com/hashneo/docuchango/commit/1e80ea667779e12c11f6e401d065fce06400dc40))
+
+- Cover scan_subfolders config and flip ID-011 to Implemented
+  ([`2891232`](https://github.com/hashneo/docuchango/commit/28912328ef5b716c545c4f6f338c6f5e83a9c895))
+
+- Drop textstat-independent ParagraphScore duplicates from readability_optional
+  ([`e5b2e44`](https://github.com/hashneo/docuchango/commit/e5b2e4429fd74b825767157acdf0ca48605c4fa2))
+
+- Enable readability paragraph extraction coverage
+  ([`6efc857`](https://github.com/hashneo/docuchango/commit/6efc857ea405eadb8cff3d300313457b82ef9a26))
+
+- Make the MDX-001 fixture hold across the MDX check rework
+  ([`a071116`](https://github.com/hashneo/docuchango/commit/a0711168923cbd4c2b8a389eff09b88154e31854))
+
+- Merge test_bulk_update_comprehensive.py into test_bulk_update.py
+  ([`ca96946`](https://github.com/hashneo/docuchango/commit/ca96946db608b6de6cf4a48ddf9029410cf8ae28))
+
+- Merge test_frontmatter_comprehensive.py into test_frontmatter_fixes.py
+  ([`749373b`](https://github.com/hashneo/docuchango/commit/749373b9909ebaa186233d04514751c3defc704a))
+
+- Merge test_tags_comprehensive.py into test_tags_fixes.py
+  ([`78c3a91`](https://github.com/hashneo/docuchango/commit/78c3a91a8e48b87194221ce7182916e31e930702))
+
+- Merge test_timestamps_comprehensive.py into test_timestamp_fixes.py
+  ([`cf8305c`](https://github.com/hashneo/docuchango/commit/cf8305c23e5406d8ae5b530b85d2896424fad8d4))
+
+- Merge test_whitespace_comprehensive.py into test_whitespace_fixes.py
+  ([`89542eb`](https://github.com/hashneo/docuchango/commit/89542eb82d43e465a22730f0ca6534e331f89291))
+
+- Retire test_bug_fixes.py, moving cases by subject not PR number
+  ([`15cae09`](https://github.com/hashneo/docuchango/commit/15cae0900b7666c50bd8c30892d94b352e2bd1ca))
+
+- Retire test_coverage_improvements.py, moving unique cases to subject files
+  ([`f385406`](https://github.com/hashneo/docuchango/commit/f385406ca0f82e0af4406daba63aa754fb3f90ff))
+
+- Update finding fixtures for the Rejected status and the reworked link and MDX checks
+  ([`7b84045`](https://github.com/hashneo/docuchango/commit/7b840458b8410bd999a3d5a29372bde0b2e7721d))
+
+- **frontmatter**: Type the FM-010 project_id test helper for mypy
+  ([`a703e15`](https://github.com/hashneo/docuchango/commit/a703e15dc2dfdba4ea036f804fa260bb7ab34290))
+
+- **readability**: Add RD-001 sub-project fixture cases
+  ([`e74085f`](https://github.com/hashneo/docuchango/commit/e74085f144bc90f88bc2830fcbc9edab4b215f9a))
+
+- **validate**: Cover atomic fixing and update fixture semantics
+  ([`6513294`](https://github.com/hashneo/docuchango/commit/6513294bbba5240a06b444561bbe73271f8e4be7))
+
+
 ## v1.19.0-rc.19 (2026-09-16)
 
 
